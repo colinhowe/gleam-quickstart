@@ -1,0 +1,6 @@
+controller uk.co.colinhowe.glimpse.example.Index
+
+page(title: "Welcome") {
+  text "It is now "
+  text c.time
+}
