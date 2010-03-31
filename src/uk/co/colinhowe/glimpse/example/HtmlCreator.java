@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import uk.co.colinhowe.glimpse.Node;
+import uk.co.colinhowe.glimpse.PropertyReference;
 
 public class HtmlCreator {
   private interface NodeHandler {
@@ -12,19 +13,8 @@ public class HtmlCreator {
   }
   
   private Map<String, NodeHandler> handlers = new HashMap<String, NodeHandler>();
-  
-  public Node findNode(List<Node> nodes, String name) {
-    for (Node node : nodes) {
-      if (node.getId().equals(name)) {
-        return node;
-      }
-    }
     
-    return null;
-  }
-  
   public HtmlCreator() {
-    
     handlers.put("page", new NodeHandler() {
       public void handle(Node node, StringBuilder builder) {
         builder.append("<html>");
@@ -44,9 +34,43 @@ public class HtmlCreator {
         builder.append("<span>" + node.getValue() + "</span>");
       }
     });
+    
+    handlers.put("paragraph", new NodeHandler() {
+      public void handle(Node node, StringBuilder builder) {
+        builder.append("<p>");
+        generate(node.getNodes(), builder);
+        builder.append("</p>");
+      }
+    });
+    
+    handlers.put("form", new NodeHandler() {
+      public void handle(Node node, StringBuilder builder) {
+        builder.append("<form>");
+        generate(node.getNodes(), builder);
+        builder.append("<input type=\"submit\" value=\"Go\" />");
+        builder.append("</form>");
+      }
+    });
+    
+    handlers.put("field", new NodeHandler() {
+      public void handle(Node node, StringBuilder builder) {
+        PropertyReference<?> ref = (PropertyReference<?>)node.getAttribute("property");
+        String inputName = ref.getPath();
+        String value = (String)ref.getValue();
+        String label = (String)node.getAttribute("label");
+        builder.append("<div>");
+        builder.append("<label for=\"" + inputName + "\">" + label + "</label>");
+        builder.append("<input type=\"text\" name=\"" + inputName + "\" value=\"");
+        if (value != null) {
+          builder.append(value);
+        }
+        builder.append("\" />");
+        builder.append("</div>");
+      }
+    });
   }
   
-  public void generate(Node node, StringBuilder builder) {
+  private void generate(Node node, StringBuilder builder) {
     if (handlers.containsKey(node.getId())) {
       handlers.get(node.getId()).handle(node, builder);
     } else {
@@ -54,7 +78,7 @@ public class HtmlCreator {
     }
   }
 
-  public void generate(List<Node> nodes, StringBuilder builder) {
+  private void generate(List<Node> nodes, StringBuilder builder) {
     for (Node node : nodes) {
       generate(node, builder);
     }

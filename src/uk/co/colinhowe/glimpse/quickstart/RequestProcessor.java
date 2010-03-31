@@ -1,4 +1,5 @@
 package uk.co.colinhowe.glimpse.quickstart;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
@@ -9,7 +10,6 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -23,6 +23,7 @@ import javax.servlet.http.HttpServletResponse;
 import uk.co.colinhowe.glimpse.CompilationError;
 import uk.co.colinhowe.glimpse.CompilationResult;
 import uk.co.colinhowe.glimpse.Node;
+import uk.co.colinhowe.glimpse.PropertyReference;
 import uk.co.colinhowe.glimpse.View;
 import uk.co.colinhowe.glimpse.compiler.CompilationUnit;
 import uk.co.colinhowe.glimpse.compiler.FileCompilationUnit;
@@ -33,7 +34,7 @@ import Acme.Serve.Serve;
 
 @SuppressWarnings("serial")
 public class RequestProcessor extends HttpServlet {
-  
+  private Map<String, PropertyReference<?>> bindings = new HashMap<String, PropertyReference<?>>();
   private boolean developerMode = true;
   
   private List<CompilationUnit> getCompilationUnits(File folder) {
@@ -158,8 +159,7 @@ public class RequestProcessor extends HttpServlet {
     }
   }
   
-  @Override
-  protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+  private void handleRequest(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 
     long startTime = System.currentTimeMillis();
     
@@ -192,11 +192,29 @@ public class RequestProcessor extends HttpServlet {
         Class<? extends RequestHandler> handlerClazz = PageMappings.MAPPINGS.get(viewName);
         
         final RequestHandler controller = handlerClazz.newInstance();
+        
+        // Get any parameters from the request that are bound
+        // and set them on the controller
+        String queryString = request.getQueryString();
+        if (queryString != null) {
+          String[] parameters = queryString.split("&");
+          for (String parameter : parameters) {
+            String[] pair = parameter.split("=");
+            if (bindings.containsKey(pair[0])) {
+              bindings.get(pair[0]).set(controller, pair[1]);
+            }
+          }
+        }
+        
         controller.doGet(request);
 
         final View view = getView(viewName);
         final List<Node> nodes = view.view(controller);
-
+        
+        // Get bindings from the node list
+        bindings = new HashMap<String, PropertyReference<?>>();
+        getBindings(nodes, bindings);
+        
         result = new HtmlCreator().generate(nodes);
       }
     } catch (Throwable e) {
@@ -214,5 +232,31 @@ public class RequestProcessor extends HttpServlet {
     long endTime = System.currentTimeMillis();
     long totalTime = endTime - startTime;
     System.out.println("Execution performed in " + totalTime + "ms");
+  }
+  
+  
+  private void getBindings(List<Node> nodes, Map<String, PropertyReference<?>> bindings) {
+    if (nodes == null) {
+      return;
+    }
+    for (Node node : nodes) {
+      if (node.getId().equals("field")) {
+        PropertyReference<?> reference = (PropertyReference<?>)node.getAttribute("property");
+        bindings.put(reference.getPath(), reference);
+      }
+      
+      getBindings(node.getNodes(), bindings);
+    }
+    
+  }
+
+  @Override
+  protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    handleRequest(request, response);
+  }
+  
+  @Override
+  protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    handleRequest(request, response);
   }
 }
