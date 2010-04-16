@@ -1,11 +1,11 @@
-package uk.co.colinhowe.glimpse.example;
+package gleam.example;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import uk.co.colinhowe.glimpse.Node;
-import uk.co.colinhowe.glimpse.PropertyReference;
+import gleam.Node;
+import gleam.PropertyReference;
 
 public class HtmlCreator {
   private interface NodeHandler {
@@ -71,10 +71,10 @@ public class HtmlCreator {
   }
   
   private void generate(Node node, StringBuilder builder) {
-    if (handlers.containsKey(node.getId())) {
-      handlers.get(node.getId()).handle(node, builder);
+    if (handlers.containsKey(node.getTagName())) {
+      handlers.get(node.getTagName()).handle(node, builder);
     } else {
-      throw new IllegalStateException("Unrecognised node type [" + node.getId() + "]");
+      throw new IllegalStateException("Unrecognised node type [" + node.getTagName() + "]");
     }
   }
 

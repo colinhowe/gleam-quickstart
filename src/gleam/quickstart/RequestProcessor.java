@@ -1,4 +1,4 @@
-package uk.co.colinhowe.glimpse.quickstart;
+package gleam.quickstart;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -20,16 +20,16 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import uk.co.colinhowe.glimpse.CompilationError;
-import uk.co.colinhowe.glimpse.CompilationResult;
-import uk.co.colinhowe.glimpse.Node;
-import uk.co.colinhowe.glimpse.PropertyReference;
-import uk.co.colinhowe.glimpse.View;
-import uk.co.colinhowe.glimpse.compiler.CompilationUnit;
-import uk.co.colinhowe.glimpse.compiler.FileCompilationUnit;
-import uk.co.colinhowe.glimpse.compiler.GlimpseCompiler;
-import uk.co.colinhowe.glimpse.example.HtmlCreator;
-import uk.co.colinhowe.glimpse.example.PageMappings;
+import gleam.CompilationError;
+import gleam.CompilationResult;
+import gleam.Node;
+import gleam.PropertyReference;
+import gleam.View;
+import gleam.compiler.CompilationUnit;
+import gleam.compiler.FileCompilationUnit;
+import gleam.compiler.GleamCompiler;
+import gleam.example.HtmlCreator;
+import gleam.example.PageMappings;
 import Acme.Serve.Serve;
 
 @SuppressWarnings("serial")
@@ -68,7 +68,7 @@ public class RequestProcessor extends HttpServlet {
     List<String> classPaths = new LinkedList<String>();
 //    classPaths.add("../glimpse/bin");
     
-    List<CompilationResult> compilationResults = new GlimpseCompiler().compile(units, classPaths);
+    List<CompilationResult> compilationResults = new GleamCompiler().compile(units, classPaths);
     
     boolean hasErrors = false;
     for (CompilationResult compilationResult : compilationResults) {
@@ -240,7 +240,7 @@ public class RequestProcessor extends HttpServlet {
       return;
     }
     for (Node node : nodes) {
-      if (node.getId().equals("field")) {
+      if (node.getTagName().equals("field")) {
         PropertyReference<?> reference = (PropertyReference<?>)node.getAttribute("property");
         bindings.put(reference.getPath(), reference);
       }

@@ -1,9 +1,9 @@
-package uk.co.colinhowe.glimpse.example;
+package gleam.example;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-import uk.co.colinhowe.glimpse.quickstart.RequestHandler;
+import gleam.quickstart.RequestHandler;
 
 public class Index extends RequestHandler {
   private String username = "Unknown user";

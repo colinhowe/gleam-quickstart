@@ -1,9 +1,9 @@
-package uk.co.colinhowe.glimpse.example;
+package gleam.example;
 
 import java.util.Map;
 import java.util.HashMap;
 
-import uk.co.colinhowe.glimpse.quickstart.RequestHandler;
+import gleam.quickstart.RequestHandler;
 
 public class PageMappings {
   public final static Map<String, Class<? extends RequestHandler>> MAPPINGS = new HashMap<String, Class<? extends RequestHandler>>();

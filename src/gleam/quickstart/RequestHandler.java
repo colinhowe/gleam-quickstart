@@ -1,4 +1,4 @@
-package uk.co.colinhowe.glimpse.quickstart;
+package gleam.quickstart;
 
 import javax.servlet.http.HttpServletRequest;
 
