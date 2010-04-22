@@ -14,9 +14,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.net.URL;
-import java.net.URLClassLoader;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -42,7 +39,7 @@ public class RequestProcessor extends HttpServlet {
    */
   private String compile() {
     String result = "";
-    final File viewsFolder = new File(this.getClass().getResource("/pages/").getFile());
+    final File viewsFolder = new File("./views/");
     final List<CompilationUnit> units = new LinkedList<CompilationUnit>();
     for (final File viewFile : viewsFolder.listFiles()) {
       if (viewFile.getAbsolutePath().endsWith(".gleam")) {
@@ -50,7 +47,6 @@ public class RequestProcessor extends HttpServlet {
         final String sourceName = viewFile.toString().substring(0, viewsFolder.toString().length());
         final CompilationUnit unit = 
           new FileCompilationUnit(viewName, sourceName, viewFile.getAbsolutePath());
-        System.out.println("Saved: " + viewName + " on " + new Date(viewFile.lastModified()));
         units.add(unit);
       }
     }
@@ -66,7 +62,7 @@ public class RequestProcessor extends HttpServlet {
       for (CompilationError error : compilationResult.getErrors()) {
         hasErrors = true;
         System.out.println(error.toString());
-        result += compilationResult.getFilename() + ": " + error.toString() + "<br />";
+        result += compilationResult.getFilename() + ": " + error.toString() + "\n";
       }
     }
     
@@ -154,14 +150,33 @@ public class RequestProcessor extends HttpServlet {
     }
     
     try {
-      final ClassLoader classLoader = new URLClassLoader(new URL[] { new File("temp/").toURL() });
-      final Class<?> viewClazz;
-      viewClazz = classLoader.loadClass(viewName);
+      System.out.println(new File("temp/").toURL());
+      // TODO Tidy this up
+      final ClassReloader classLoader = new ClassReloader("temp", this.getClass().getClassLoader());
+      final Class<?> viewClazz = classLoader.loadClass(viewName);
       View view = (View)viewClazz.newInstance();
       viewCache.put(viewName, view);
       return view;
     } catch (Exception e) {
       throw new RuntimeException("Failed to instantiate view", e);
+    }
+  }
+  
+  public class ClassReloader extends ClassLoader {
+    final String viewFolder;
+    
+    public ClassReloader(String viewFolder, ClassLoader parent) {
+      super(parent);
+      this.viewFolder = viewFolder;
+    }
+    
+    public Class<?> loadClass(String name) throws ClassNotFoundException {
+      try {
+        byte[] bytes = readFile(viewFolder + "/" + name + ".class");
+        return defineClass(name, bytes, 0, bytes.length);
+      } catch (IOException e) {
+        return super.loadClass(name);
+      }
     }
   }
   
@@ -211,7 +226,7 @@ public class RequestProcessor extends HttpServlet {
       StringWriter sw = new StringWriter();
       PrintWriter pw = new PrintWriter(sw);
       e.printStackTrace(pw);
-      result = sw.toString();
+      result = "<pre>" + sw.toString() + "</pre>";
     }
     
     final PrintWriter writer = response.getWriter();

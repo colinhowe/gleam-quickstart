@@ -1,0 +1,42 @@
+<project name="Gleam">
+	<target name="prepare">
+    <path id="build.classpath">
+      <fileset dir="lib">
+        <include name="**/*.jar"/>
+      </fileset>
+      <path location="classes" />
+      <path location="temp" />
+    </path>
+  </target>
+		
+  <target name="build" depends="prepare">
+  	<mkdir dir="classes"/>
+    <javac srcdir="."
+           debug="true"
+           destdir="classes"
+           deprecation="true"
+           classpathref="build.classpath">
+      <include name="src/**/*.java" />
+    </javac>
+	</target>	
+	
+	<target name="clean">
+	  <delete dir="temp"/>
+    <delete dir="classes"/>
+  </target>
+	
+	<target name="run" depends="build">
+		<mkdir dir="temp" />
+		<!-- Build the classpath again -->
+		<antcall target="prepare" />
+    <java classname="gleam.quickstart.RequestProcessor">
+    	<classpath>
+        <fileset dir="lib">
+          <include name="**/*.jar"/>
+        </fileset>
+        <path location="classes" />
+        <path location="temp" />
+    	</classpath>
+  	</java>
+	</target>
+</project>
