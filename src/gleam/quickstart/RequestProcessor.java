@@ -30,10 +30,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 
 import javax.servlet.ServletException;
@@ -47,7 +45,8 @@ import org.eclipse.jetty.server.handler.AbstractHandler;
 import pages.PageMappings;
 
 public class RequestProcessor extends AbstractHandler {
-  private static boolean developerMode = false;
+  private final boolean developerMode;
+  private final ViewCache viewCache;
   
   /**
    * Compiles the views.
@@ -90,92 +89,23 @@ public class RequestProcessor extends AbstractHandler {
     return result;
   }
   
-  public static Properties loadConfiguration() {
-    Properties propertiesFile = new Properties();
-    try {
-      propertiesFile.load(new FileInputStream("config.properties"));
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to load config.properties", e);
-    }
-    return propertiesFile;
-  }
-  
   public static void main(String[] args) throws Exception {
-    Properties config = loadConfiguration();
-    developerMode = Boolean.parseBoolean(config.getProperty("developermode"));
+    Properties config = new Properties();
+    config.load(new FileInputStream("config.properties"));
+    final boolean developerMode = Boolean.parseBoolean(config.getProperty("developermode"));
     
     Server server = new Server(Integer.parseInt(config.getProperty("port")));
-    server.setHandler(new RequestProcessor());
+    server.setHandler(new RequestProcessor(developerMode));
     server.start();
   }
   
-  RequestProcessor() {
+  RequestProcessor(final boolean developerMode) {
+    this.developerMode = developerMode;
+    viewCache = new ViewCache(developerMode);
     compile();
   }
   
-  private byte[] readFile(String filename) throws FileNotFoundException {
-    FileInputStream fis = null;
-    try {
-      fis = new FileInputStream(filename);
-      int numberBytes = fis.available();
-      byte bytearray[] = new byte[numberBytes];
-  
-      fis.read(bytearray);
-      return bytearray;
-    } catch (IOException e) {
-      if (e instanceof FileNotFoundException) {
-        throw (FileNotFoundException)e;
-      } else {
-        throw new RuntimeException(e);
-      }
-    } finally {
-      if (fis != null) {
-        try {
-          fis.close();
-        } catch (IOException e) {
-          throw new RuntimeException(e);
-        }
-      }
-    }
-  }
-  
-  final Map<String, View> viewCache = new HashMap<String, View>();
-  private View getView(String viewName) {
-    if (!developerMode && viewCache.containsKey(viewName)) {
-      return viewCache.get(viewName);
-    }
-    
-    try {
-      final ClassReloader classLoader = new ClassReloader("temp", this.getClass().getClassLoader());
-      final Class<?> viewClazz = classLoader.loadClass(viewName);
-      View view = (View)viewClazz.newInstance();
-      viewCache.put(viewName, view);
-      return view;
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to instantiate view", e);
-    }
-  }
-  
-  public class ClassReloader extends ClassLoader {
-    final String viewFolder;
-    
-    public ClassReloader(String viewFolder, ClassLoader parent) {
-      super(parent);
-      this.viewFolder = viewFolder;
-    }
-    
-    public Class<?> loadClass(String name) throws ClassNotFoundException {
-      try {
-        byte[] bytes = readFile(viewFolder + "/" + name + ".class");
-        return defineClass(name, bytes, 0, bytes.length);
-      } catch (IOException e) {
-        return super.loadClass(name);
-      }
-    }
-  }
-//  public void handle(String arg0, Request arg1, HttpServletRequest arg2,
-//      HttpServletResponse arg3) throws IOException, ServletException {
-  public void handle(String target, Request r1, HttpServletRequest request, HttpServletResponse response)
+  public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
       throws IOException, ServletException {
 
     long startTime = System.currentTimeMillis();
@@ -188,7 +118,7 @@ public class RequestProcessor extends AbstractHandler {
     if (requestUri.indexOf(".") != -1) {
       // Get from the resources folder
       try {
-        final byte[] contents = readFile("resource/" + requestUri);
+        final byte[] contents = FileUtils.readFile("resource/" + requestUri);
         response.getOutputStream().write(contents);
       } catch (FileNotFoundException e) {
         System.err.println("Requested missing file [" + e.getMessage() + "]");
@@ -213,23 +143,21 @@ public class RequestProcessor extends AbstractHandler {
         final RequestHandler controller = handlerClazz.newInstance();
         controller.doGet(request);
 
-        final View view = getView(viewName);
+        final View view = viewCache.getView(viewName);
         final List<Node> nodes = view.view(controller);
         
         result = new gleam.util.HtmlCreator().generate(nodes);
       }
     } catch (Throwable e) {
       StringWriter sw = new StringWriter();
-      PrintWriter pw = new PrintWriter(sw);
-      e.printStackTrace(pw);
+      e.printStackTrace(new PrintWriter(sw));
       result = "<pre>" + sw.toString() + "</pre>";
     }
     
-    final PrintWriter writer = response.getWriter();
-    writer.println(result);
+    response.getWriter().println(result);
     response.setStatus(HttpServletResponse.SC_OK);
 
-    ((Request)request).setHandled(true);
+    baseRequest.setHandled(true);
     
     long totalTime = System.currentTimeMillis() - startTime;
     System.out.println("Execution performed in " + totalTime + "ms");
