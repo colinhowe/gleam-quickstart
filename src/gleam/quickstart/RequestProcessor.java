@@ -40,12 +40,13 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.mortbay.jetty.servlet.DefaultServlet;
+import org.eclipse.jetty.server.Request;
+import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.handler.AbstractHandler;
 
 import pages.PageMappings;
 
-@SuppressWarnings("serial")
-public class RequestProcessor extends DefaultServlet {
+public class RequestProcessor extends AbstractHandler {
   private static boolean developerMode = false;
   
   /**
@@ -99,35 +100,13 @@ public class RequestProcessor extends DefaultServlet {
     return propertiesFile;
   }
   
-  public static void main(String[] args) {
+  public static void main(String[] args) throws Exception {
     Properties config = loadConfiguration();
-    
-    // Set developer mode
     developerMode = Boolean.parseBoolean(config.getProperty("developermode"));
     
-    // setting properties for the server, and exchangable Acceptors
-    Properties properties = new java.util.Properties();
-    properties.put("port", Integer.parseInt(config.getProperty("port")));
-//    properties.setProperty(Acme.Serve.Serve.ARG_NOHUP, "nohup");
-
-    
-    
-    final Serve srv = new Serve();
-    srv.arguments = properties;
-    srv.addDefaultServlets(null); // optional file servlet
-    srv.addServlet("/", new RequestProcessor()); // optional
-    
-    Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
-      public void run() {
-        try {
-          srv.notifyStop();
-        } catch (java.io.IOException ioe) {
-
-        }
-        srv.destroyAllServlets();
-      }
-    }));
-    srv.serve();
+    Server server = new Server(Integer.parseInt(config.getProperty("port")));
+    server.setHandler(new RequestProcessor());
+    server.start();
   }
   
   RequestProcessor() {
@@ -161,15 +140,12 @@ public class RequestProcessor extends DefaultServlet {
   }
   
   final Map<String, View> viewCache = new HashMap<String, View>();
-  @SuppressWarnings("deprecation")
   private View getView(String viewName) {
     if (!developerMode && viewCache.containsKey(viewName)) {
       return viewCache.get(viewName);
     }
     
     try {
-      System.out.println(new File("temp/").toURL());
-      // TODO Tidy this up
       final ClassReloader classLoader = new ClassReloader("temp", this.getClass().getClassLoader());
       final Class<?> viewClazz = classLoader.loadClass(viewName);
       View view = (View)viewClazz.newInstance();
@@ -197,8 +173,10 @@ public class RequestProcessor extends DefaultServlet {
       }
     }
   }
-  
-  private void handleRequest(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+//  public void handle(String arg0, Request arg1, HttpServletRequest arg2,
+//      HttpServletResponse arg3) throws IOException, ServletException {
+  public void handle(String target, Request r1, HttpServletRequest request, HttpServletResponse response)
+      throws IOException, ServletException {
 
     long startTime = System.currentTimeMillis();
     
@@ -249,18 +227,11 @@ public class RequestProcessor extends DefaultServlet {
     
     final PrintWriter writer = response.getWriter();
     writer.println(result);
+    response.setStatus(HttpServletResponse.SC_OK);
+
+    ((Request)request).setHandled(true);
     
     long totalTime = System.currentTimeMillis() - startTime;
     System.out.println("Execution performed in " + totalTime + "ms");
-  }
-
-  @Override
-  protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-    handleRequest(request, response);
-  }
-  
-  @Override
-  protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-    handleRequest(request, response);
   }
 }
