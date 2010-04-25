@@ -37,15 +37,15 @@ import java.util.Map;
 import java.util.Properties;
 
 import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.mortbay.jetty.servlet.DefaultServlet;
+
 import pages.PageMappings;
-import Acme.Serve.Serve;
 
 @SuppressWarnings("serial")
-public class RequestProcessor extends HttpServlet {
+public class RequestProcessor extends DefaultServlet {
   private static boolean developerMode = false;
   
   /**
@@ -108,8 +108,10 @@ public class RequestProcessor extends HttpServlet {
     // setting properties for the server, and exchangable Acceptors
     Properties properties = new java.util.Properties();
     properties.put("port", Integer.parseInt(config.getProperty("port")));
-    properties.setProperty(Acme.Serve.Serve.ARG_NOHUP, "nohup");
+//    properties.setProperty(Acme.Serve.Serve.ARG_NOHUP, "nohup");
 
+    
+    
     final Serve srv = new Serve();
     srv.arguments = properties;
     srv.addDefaultServlets(null); // optional file servlet
